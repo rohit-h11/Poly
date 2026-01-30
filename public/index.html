@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+</head>
+
+<body>
+    <div class="main">
+        <form>
+            <input type="text" name="" id="text" />
+            <button>Submit</button>
+        </form>
+        <p>Hello my man</p>
+    </div>
+
+    <script>
+        async function SendToBack() {
+            try {
+                const text = document.querySelector("#text").value;
+                console.log(text);
+                const res= await fetch("/form",{
+                    method:"POST",
+                    headers:{"Content-Type":"application/json"},
+                    body:JSON.stringify({message:text})
+
+                    // backend
+                    // res.json({ reply: "Backend received: " + msg });
+
+
+                })
+
+                const data = await res.json()
+
+                console.log(data.reply);
+
+            }
+            catch (err) {
+                console.log(err);
+            }
+
+        }
+        const submit = document.querySelector("button");
+        submit.addEventListener("click", (e) => {
+            e.preventDefault();
+            SendToBack();
+        })
+    </script>
+</body>
+
+</html>

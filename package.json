@@ -1,0 +1,33 @@
+{
+  "name": "polychat-backend",
+  "version": "1.0.0",
+  "description": "PolyChat Backend API",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "keywords": [
+    "chat",
+    "llm",
+    "api"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.20.0",
+    "@google/genai": "^1.34.0",
+    "cohere-ai": "^7.20.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "ejs": "^3.1.10",
+    "express": "^4.22.1",
+    "mongodb": "^6.3.0",
+    "mongoose": "^8.21.0",
+    "openai": "^4.104.0",
+    "path": "^0.12.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
