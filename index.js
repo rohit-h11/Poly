@@ -22,23 +22,20 @@ app.use(express.static('public'));//public is folder name
 
 
 // MongoDB Connection
-// const connectToDatabase = async () => {
-//   try {
-//     const mongoUri = process.env.MONGODB_URI;
-//     await mongoose.connect(mongoUri, {
-//       useNewUrlParser: true,
-//       useUnifiedTopology: true,
-//     });
-//     console.log("Connected to MongoDB");
-//   } catch (error) {
-//     console.error("MongoDB connection error:", error.message);
-//     console.warn("Continuing without MongoDB, using in-memory storage");
-//   }
-// };
+const connectToDatabase = async () => {
+  try {
+    const mongoUri = process.env.MONGODB_URI;
+    await mongoose.connect(mongoUri);
+    console.log("Connected to MongoDB");
+  } catch (error) {
+    console.error("MongoDB connection error:", error.message);
+    console.warn("Continuing without MongoDB, using in-memory storage");
+  }
+};
 
-// if (process.env.MONGODB_URI) {
-//   connectToDatabase();
-// }
+if (process.env.MONGODB_URI) {
+  connectToDatabase();
+}
 
 app.use("/polychat", chatRoutes);
 

@@ -19,14 +19,15 @@
                     </svg>
                     PolyChat
                 </div>
-                <button class="new-chat-btn"> New Chat</button>
             </div>
             <nav class="chat-history">
-                <div class="history-item">Quantum computing encrypt...ewiwrjhlwerik</div>
-                <div class="history-item">React performance optimizat...</div>
-                <div class="history-item">Q3 Marketing Strategy</div>
-                <div class="history-item">Python async best practices</div>
-                <div class="history-item">Design system components</div>
+                <% if(typeof chats !== 'undefined' && chats.length > 0) { %>
+                    <% chats.forEach(chat => { %>
+                        <div class="history-item" onclick="window.location.href='/polychat/<%= chat._id %>'"><%= chat.title || 'New Chat' %></div>
+                    <% }); %>
+                <% } else { %>
+                    <div class="history-item" style="color:#999;">No chats yet</div>
+                <% } %>
             </nav>
             <div class="sidebar-bottom">
                 <div class="footer-link">
@@ -66,9 +67,9 @@
                     <input type="hidden" id="selectedModelInput" name="model" value="gemini-2.5-flash">
                     <div class="model-tabs">
 
-                        <div class="tab" data-model="gpt-4o">GPT-4o</div>
+                        <div class="tab" data-model="openrouter">OpenRouter</div>
 
-                        <div class="tab" data-model="cohere">Cohere </div>
+                        <div class="tab" data-model="groq">Groq</div>
                         <div class="tab active" data-model="gemini-2.5-flash">Gemini 2.5 Flash</div>
                         <div class="tab auto-tab">
                             <svg class="icon-tiny" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -86,7 +87,7 @@
                                 <circle cx="11" cy="11" r="8" />
                                 <path d="m21 21-4.3-4.3" />
                             </svg>
-                            <input type="text" placeholder="Ask anything..." name="message">
+                            <input type="text" placeholder="Ask anything..." name="message" autocomplete="off">
                             <div class="search-actions">
                                 <svg class="icon-small hov" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                     <path

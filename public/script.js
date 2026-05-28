@@ -1,9 +1,7 @@
 
 
 const API_BASE_URL = "http://localhost:3000/polychat";
-
-
-
+let currentChatId = typeof INITIAL_DATA !== 'undefined' ? (INITIAL_DATA.chatId || null) : null;
 async function handleChat(message, model, chatId = null) {
   try {
     const response = await fetch(`${API_BASE_URL}/chat`, {
@@ -44,7 +42,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log(" STEP 2: Sending to Backend API...");
             
             
-            const data = await handleChat(INITIAL_DATA.message, INITIAL_DATA.model);
+            const data = await handleChat(INITIAL_DATA.message, INITIAL_DATA.model, currentChatId);
+            
+            if (data.chatId && !currentChatId) {
+                currentChatId = data.chatId;
+                window.history.pushState(null, '', '/polychat/' + currentChatId);
+            }
             
             const showText = data.reply;
             //The Backend replies
@@ -78,9 +81,13 @@ function appendChatBlock(message) {
     if (!chatContainer) return null;
 
     
-    const currentModel = (typeof INITIAL_DATA !== 'undefined' && INITIAL_DATA.model) 
-                         ? INITIAL_DATA.model 
-                         : "AI Model";
+    const modelSelect = document.getElementById('model-select');
+    let currentModel = "AI Model";
+    if (modelSelect) {
+        currentModel = modelSelect.options[modelSelect.selectedIndex].text;
+    } else if (typeof INITIAL_DATA !== 'undefined' && INITIAL_DATA.model) {
+        currentModel = INITIAL_DATA.model;
+    }
 
     
     const newBlock = document.createElement('div');
@@ -152,12 +159,18 @@ if (chatForm) {
 
         try {
           
-            const currentModel = (typeof INITIAL_DATA !== 'undefined' && INITIAL_DATA.model) 
-                                 ? INITIAL_DATA.model 
-                                 : 'gemini-2.5-flash';
+            const modelSelect = document.getElementById('model-select');
+            const currentModel = modelSelect 
+                                 ? modelSelect.value 
+                                 : (typeof INITIAL_DATA !== 'undefined' && INITIAL_DATA.model ? INITIAL_DATA.model : 'gemini-2.5-flash');
 
             
-            const data = await handleChat(message, currentModel);
+            const data = await handleChat(message, currentModel, currentChatId);
+
+            if (data.chatId && !currentChatId) {
+                currentChatId = data.chatId;
+                window.history.pushState(null, '', '/polychat/' + currentChatId);
+            }
 
             //ui call
             if (answerBox) {

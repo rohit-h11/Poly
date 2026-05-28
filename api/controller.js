@@ -1,178 +1,116 @@
-require('dotenv').config(); // Load the .env file
-
-const { GoogleGenAI } = require("@google/genai");
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-const chatHistoryStore = {};
-
-
-const OpenAI = require("openai");
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-const { CohereClientV2 } = require('cohere-ai');
-const cohere = new CohereClientV2({ token: process.env.COHERE_API_KEY });
-
-const Chat = require("./model")
+require('dotenv').config();
+const Chat = require("./model");
+const llmService = require("./services/llmService");
 
 const handleChat = async (req, res) => {
   const { message, model, chatId } = req.body;
-  console.log(message)
+  console.log("Message:", message, "Model:", model, "ChatId:", chatId);
+  
   try {
-    // TODO: Implement chat logic
+    let chat = null;
+    let history = [];
 
-    const prompt = `
-            You are a helpful assistant. 
-            Answer the following question using HTML tags (like <p>, <ul>, <li>, <strong>, <h3>). 
-            Do NOT wrap the answer in markdown code blocks (like \`\`\`html). 
-            Just give the raw HTML string.
-            
-            Question: ${message}
-        `;
-
-    let aiText = "";
-    if (model === "gemini-2.5-flash") {
-      console.log("Selected gemini");
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt,
+    if (chatId) {
+      chat = await Chat.findById(chatId);
+      if (chat) {
+        history = chat.messages || [];
+        chat.messages.push({ role: "user", content: message, model: model });
+        await chat.save();
+      }
+    } else {
+      chat = new Chat({
+        title: message.substring(0, 50),
+        messages: [{ role: "user", content: message, model: model }]
       });
-
-
-      console.log("Google Responded:", response ? "Yes" : "No");
-      aiText = response.text;
-
-
+      await chat.save();
     }
 
-    if (model === "gpt-4o") {
-      console.log(process.env.OPENAI_API_KEY)
-      const response = await client.responses.create({
-        model: "gpt-5.2",
-        input: prompt
-      });
-      aiText = response.output_text;
+    // Use modular service
+    const aiText = await llmService.getAIResponse(model, message, history);
 
+    if (chat) {
+      chat.messages.push({ role: "assistant", content: aiText, model: model });
+      await chat.save();
     }
 
-    if (model === "cohere") {
-
-      console.log("cohere")
-      const response = await cohere.chat({
-        model: 'command-a-03-2025',
-        messages: [
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-      });
-      aiText = response.message.content[0].text;;
-    }
-    console.log(aiText);
-
-
-    // sends to script.js
     res.status(200).json({
-      reply: aiText
+      reply: aiText,
+      chatId: chat ? chat._id : null
     });
 
-
   } catch (error) {
-
     console.error("API ERROR:", error.message);
-
-    // 429 too many req
-    if (error.message.includes("429") || error.message.includes("quota") || error.status === 429) {
-      return res.status(429).json({
-        message: "Too Many Requests",
-        reply: "<p><strong>Busy Signal:</strong> The AI is receiving too many messages right now. Please wait 30 seconds and try again.</p>"
-      });
-    }
-
-   
-    if (error.message.includes("404") || error.message.includes("not found")) {
-      return res.status(500).json({
-        message: "Model Error",
-        reply: "<p> <strong>Configuration Error:</strong> The selected AI model is not available for this API Key.</p>"
-      });
-    }
-    res
-      .status(500)
-      .json({ message: "Error handling chat", error: error.message });
+    const isQuotaError = error.message.includes("429") || error.message.includes("quota") || error.status === 429;
+    
+    res.status(isQuotaError ? 429 : 500).json({
+      message: isQuotaError ? "Too Many Requests" : "Error handling chat",
+      reply: isQuotaError 
+        ? "<p><strong>Busy Signal:</strong> The AI is receiving too many messages right now. Please wait 30 seconds and try again.</p>"
+        : `<p><strong>Error:</strong> ${error.message}</p>`
+    });
   }
 };
 
+const renderPage1 = async (req, res) => {
+  try {
+    const chats = await Chat.find().sort({ updatedAt: -1 }).limit(20);
+    res.render("screen1", { chats });
+  } catch (err) {
+    res.render("screen1", { chats: [] });
+  }
+};
 
+const renderPage2 = async (req, res) => {
+  try {
+    const chats = await Chat.find().sort({ updatedAt: -1 }).limit(20);
+    res.render("screen2", { chats, message: "", model: "gemini-2.5-flash", chatId: null, history: [] });
+  } catch (err) {
+    res.render("screen2", { chats: [], message: "", model: "gemini-2.5-flash", chatId: null, history: [] });
+  }
+};
 
-const renderPage1 = (req, res) => {
-  res.render("screen1");
-}
-
-const renderPage2 = (req, res) => {
-  res.render("screen2");
-}
-
-const createChat1 = (req, res) => {
+const createChat = async (req, res) => {
   const { message, model } = req.body;
-  res.render("screen2", {
-    message: message, model: model
-  })
-  console.log(req.body);
+  try {
+    const chats = await Chat.find().sort({ updatedAt: -1 }).limit(20);
+    res.render("screen2", {
+      message: message, 
+      model: model,
+      chatId: null,
+      history: [],
+      chats: chats
+    });
+  } catch (err) {
+    res.render("screen2", { message: message, model: model, chatId: null, history: [], chats: [] });
+  }
+};
 
-}
+const loadChatPage = async (req, res) => {
+  try {
+    const chatId = req.params.chatId;
+    const chat = await Chat.findById(chatId);
+    const chats = await Chat.find().sort({ updatedAt: -1 }).limit(20);
 
+    if (!chat) return res.status(404).send("Chat not found");
 
-// tried task 2 and mongo
+    res.render("screen2", { 
+      chatId: chat._id, 
+      history: chat.messages, 
+      model: chat.messages.length > 0 ? chat.messages[chat.messages.length - 1].model : "gemini-2.5-flash",
+      message: null,
+      chats: chats
+    });
 
-// const createChat =async(req,res)=>{
-//   const { message, model } = req.body;
-//   try {
-//    
-//     const newChat = await Chat.create({
-//         title: message.substring(0, 50), //50 chars as title
-//         messages: [{
-//             role: "user",
-//             content: message,
-//             model: model
-//         }]
-//     });
-//     const newId = newChat._id;
-//     // console.log(` Created New Chat: ${newId}`);
-
-//    
-//     res.redirect(`/polychat/${newId}`);
-
-//   } catch (error) {
-//     console.error("Error creating chat:", error);
-//     res.status(500).send("Database Error");
-//   }
-// }
-
-// const loadChatPage = async (req, res) => {
-//     try {
-//         
-//         const chatId = req.params.chatId;
-//         const chat = await Chat.findById(chatId);
-
-//         if (!chat) {
-//             return res.status(404).send("Chat not found");
-//         }
-
-//         //
-//         res.render("screen2", { 
-//             chatId: chat._id, 
-//             history: chat.messages, 
-//             model: "gemini-2.5-flash" 
-//         });
-
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).send("error loading chat");
-//     }
-// };
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error loading chat");
+  }
+};
 
 module.exports = {
   handleChat,
-  renderPage1, renderPage2,
-  createChat1,
-  // loadChatPage
+  renderPage1,
+  renderPage2,
+  createChat,
+  loadChatPage
 };
